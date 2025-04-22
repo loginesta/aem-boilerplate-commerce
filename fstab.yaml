@@ -1,0 +1,7 @@
+mountpoints:
+  /:
+    url: https://adobe.sharepoint.com/:f:/r/sites/HelixProjectsMultisite/Shared%20Documents/starter-content-commerce
+    type: markup
+
+folders:
+  /products/: /products/default
