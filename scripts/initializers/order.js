@@ -8,6 +8,7 @@ import {
   checkIsAuthenticated,
   CUSTOMER_ORDER_DETAILS_PATH,
   ORDER_DETAILS_PATH,
+  INVOICE_DETAILS_PATH,
   CUSTOMER_RETURN_DETAILS_PATH,
   RETURN_DETAILS_PATH,
   CUSTOMER_CREATE_RETURN_PATH,
@@ -45,6 +46,7 @@ await initializeDropin(async () => {
 
   const pathsRequiringRedirects = [
     ORDER_DETAILS_PATH,
+    INVOICE_DETAILS_PATH,
     CUSTOMER_ORDER_DETAILS_PATH,
     RETURN_DETAILS_PATH,
     CUSTOMER_RETURN_DETAILS_PATH,
@@ -54,7 +56,11 @@ await initializeDropin(async () => {
     SALES_ORDER_VIEW_PATH,
   ];
 
-  if (pathsRequiringRedirects.includes(pathname) || pathname.endsWith(ORDER_DETAILS_PATH)) {
+  if (
+    pathsRequiringRedirects.includes(pathname)
+    || pathname.endsWith(ORDER_DETAILS_PATH)
+    || pathname.endsWith(INVOICE_DETAILS_PATH)
+  ) {
     await handleUserOrdersRedirects(
       pathname,
       isAccountPage,
@@ -86,6 +92,7 @@ async function handleUserOrdersRedirects(
 ) {
   let targetPath = null;
   const isOrderDetailsPath = pathname.endsWith(ORDER_DETAILS_PATH);
+  const isInvoiceDetailsPath = pathname.endsWith(INVOICE_DETAILS_PATH);
   const isDraftOrderDetailsPath = pathname.includes('/drafts/') && isOrderDetailsPath;
 
   events.on('order/error', () => {
@@ -101,7 +108,7 @@ async function handleUserOrdersRedirects(
   if (checkIsAuthenticated()) {
     if (!orderRef) {
       targetPath = CUSTOMER_ORDERS_PATH;
-    } else if (isDraftOrderDetailsPath) {
+    } else if (isDraftOrderDetailsPath || isInvoiceDetailsPath) {
       targetPath = null;
     } else if (isAccountPage) {
       targetPath = isTokenProvided
@@ -112,7 +119,11 @@ async function handleUserOrdersRedirects(
         ? null
         : `${CUSTOMER_ORDER_DETAILS_PATH}?orderRef=${orderRef}`;
     }
-  } else if (isOrderDetailsPath && orderRef && !isTokenProvided) {
+  } else if (
+    (isOrderDetailsPath || isInvoiceDetailsPath)
+    && orderRef
+    && !isTokenProvided
+  ) {
     const returnUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
     targetPath = `${CUSTOMER_LOGIN_PATH}?redirectUrl=${encodeURIComponent(returnUrl)}`;
   } else {
