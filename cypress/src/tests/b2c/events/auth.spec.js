@@ -1,5 +1,8 @@
 import { signUpUser } from "../../../actions";
 import { assertAuthUser, expectsEventWithContext } from "../../../assertions";
+import { enableAnalyticsConsent } from "./consentTestSupport";
+
+enableAnalyticsConsent();
 
 it("has shopperId as logged-in when authenticated, and guest when not", () => {
   // 1. checks that shopperContext is guest on first non-authenticated page load

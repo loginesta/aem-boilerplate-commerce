@@ -1,5 +1,8 @@
 import { expectsEventWithContext } from "../../../assertions";
 import { products } from "../../../fixtures";
+import { enableAnalyticsConsent } from "./consentTestSupport";
+
+enableAnalyticsConsent();
 
 const baselineContexts = (adobeDataLayer) => {
   expectsEventWithContext(
@@ -17,27 +20,27 @@ const baselineContexts = (adobeDataLayer) => {
 it("has baseline contexts on homepage", () => {
   cy.visit("/");
   cy.waitForResource("commerce-events-collector.js").then(() => {
-    cy.window().its("adobeDataLayer").then(baselineContexts);
+    cy.window().its("adobeDataLayer").should(baselineContexts);
   });
 });
 
 it("has baseline contexts on PDP", () => {
   cy.visit(products.simple.urlPath);
   cy.waitForResource("commerce-events-collector.js").then(() => {
-    cy.window().its("adobeDataLayer").then(baselineContexts);
+    cy.window().its("adobeDataLayer").should(baselineContexts);
   });
 });
 
 it("has baseline contexts on cart", () => {
   cy.visit("/cart");
   cy.waitForResource("commerce-events-collector.js").then(() => {
-    cy.window().its("adobeDataLayer").then(baselineContexts);
+    cy.window().its("adobeDataLayer").should(baselineContexts);
   });
 });
 
 it("has baseline contexts on checkout", () => {
   cy.visit("/checkout");
   cy.waitForResource("commerce-events-collector.js").then(() => {
-    cy.window().its("adobeDataLayer").then(baselineContexts);
+    cy.window().its("adobeDataLayer").should(baselineContexts);
   });
 });

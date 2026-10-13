@@ -1,5 +1,8 @@
 import { expectsEventWithContext } from "../../../assertions";
 import { products } from "../../../fixtures";
+import { enableAnalyticsConsent } from "./consentTestSupport";
+
+enableAnalyticsConsent();
 /**
  * https://github.com/adobe/commerce-events/blob/main/examples/events/product-page-view.md
  *

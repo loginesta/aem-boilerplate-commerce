@@ -1,3 +1,5 @@
+import { getConsent } from './consent.js';
+
 let consentedLoaded = false;
 
 /**
@@ -28,19 +30,26 @@ function hasConsent() {
 function loadConsented() {
   if (consentedLoaded) return;
   consentedLoaded = true;
-  import('./consented.js');
+  import('./consented.js').catch((error) => {
+    consentedLoaded = false;
+    console.warn('Error loading consented scripts', error);
+  });
 }
 
 /**
- * Notifies listeners of the current consent state and loads consented
- * scripts if consent has been granted.
+ * Loads consented scripts when the shared global consent state is granted.
  */
 function onConsentUpdate() {
-  const consented = hasConsent();
-  window.dispatchEvent(new CustomEvent('consent.update', { detail: { consented } }));
-  if (consented) {
+  if (getConsent()) {
     loadConsented();
   }
 }
 
-onConsentUpdate();
+console.warn('Using the consent-check.js testing placeholder; integrate the merchant CMP before production.');
+
+window.addEventListener('consent.update', onConsentUpdate);
+window.dispatchEvent(
+  new CustomEvent('consent.update', {
+    detail: { consented: hasConsent() },
+  }),
+);

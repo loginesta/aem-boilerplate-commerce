@@ -1,4 +1,7 @@
 import { expectsEventWithContext } from "../../../assertions";
+import { enableAnalyticsConsent } from "./consentTestSupport";
+
+enableAnalyticsConsent();
 /**
  * https://github.com/adobe/commerce-events/blob/main/examples/events/recs-request-sent.md
  *   required contexts: page, storefront

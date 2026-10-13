@@ -242,7 +242,7 @@ async function loadLazy(doc) {
 
   loadFooter(doc.querySelector('body > footer'));
 
-  loadCommerceLazy();
+  await loadCommerceLazy();
 
   loadCSS(`${window.hlx.codeBasePath}/styles/lazy-styles.css`);
   loadFonts();
