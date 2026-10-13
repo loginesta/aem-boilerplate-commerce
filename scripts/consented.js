@@ -3,7 +3,11 @@ import { getConfigValue } from '@dropins/tools/lib/aem/configs.js';
 import { getUserTokenCookie } from './initializers/index.js';
 import { getConsent } from './commerce.js';
 import { CONSENT_TOPICS } from './consent.js';
-import { configureAnalyticsSubscriptions } from './analytics-events.js';
+import {
+  configureAnalyticsSubscriptions,
+  finishAnalyticsEventCapture,
+  startAnalyticsEventCapture,
+} from './analytics-events.js';
 
 let analyticsLoading;
 
@@ -35,6 +39,7 @@ async function initAnalytics() {
     updateAnalyticsConsent(analyticsConfig);
     if (analyticsConfig && getConsent(CONSENT_TOPICS.COLLECTION)) {
       if (document.prerendering || analyticsLoading) return;
+      startAnalyticsEventCapture();
       window.adobeDataLayer.push(
         {
           storefrontInstanceContext: {
@@ -79,19 +84,24 @@ async function initAnalytics() {
 
       // Load events SDK and collector
       analyticsLoading = (async () => {
-        await import('./commerce-events-sdk.js');
-        if (!getConsent(CONSENT_TOPICS.COLLECTION) || document.prerendering) {
-          analyticsLoading = undefined;
-          return;
+        try {
+          await import('./commerce-events-sdk.js');
+          if (!getConsent(CONSENT_TOPICS.COLLECTION) || document.prerendering) {
+            analyticsLoading = undefined;
+            return;
+          }
+          configureAnalyticsSubscriptions(window.magentoStorefrontEvents);
+          window.magentoStorefrontEvents.publish.pageView();
+          await import('./commerce-events-collector.js');
+          updateAnalyticsConsent(analyticsConfig);
+        } finally {
+          finishAnalyticsEventCapture();
         }
-        configureAnalyticsSubscriptions(window.magentoStorefrontEvents);
-        window.magentoStorefrontEvents.publish.pageView();
-        await import('./commerce-events-collector.js');
-        updateAnalyticsConsent(analyticsConfig);
       })();
       await analyticsLoading;
     }
   } catch (error) {
+    finishAnalyticsEventCapture();
     analyticsLoading = undefined;
     console.warn('Error initializing analytics', error);
   }

@@ -12,6 +12,7 @@
 
 let collectionAllowed = () => false;
 let initialized = false;
+let capturingAuthorizedEvents = false;
 let authorizedEvents = [];
 const configuredSubscriptions = new WeakSet();
 
@@ -22,12 +23,24 @@ export function initializeAnalyticsEvents(isAllowed) {
   window.adobeDataLayer = window.adobeDataLayer || [];
   window.adobeDataLayer.push((dataLayer) => {
     dataLayer.addEventListener('adobeDataLayer:event', (event) => {
-      if (collectionAllowed()) authorizedEvents.push(event);
+      if (capturingAuthorizedEvents && collectionAllowed()) authorizedEvents.push(event);
     }, { scope: 'future' });
   });
   window.addEventListener('consent.update', () => {
     if (!collectionAllowed()) authorizedEvents = [];
   });
+}
+
+/** Buffer consented ACDL events temporarily while the SDK and collector load. */
+export function startAnalyticsEventCapture() {
+  authorizedEvents = [];
+  capturingAuthorizedEvents = collectionAllowed();
+}
+
+/** Stop buffering and release the temporary events after collector setup. */
+export function finishAnalyticsEventCapture() {
+  capturingAuthorizedEvents = false;
+  authorizedEvents = [];
 }
 
 export function configureAnalyticsSubscriptions(sdk) {

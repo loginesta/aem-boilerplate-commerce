@@ -1,4 +1,4 @@
-import { enableAnalyticsConsent } from "./consentTestSupport";
+import { enableAnalyticsConsent, visitWithAnalyticsConsent } from "./consentTestSupport";
 
 enableAnalyticsConsent();
 
@@ -8,7 +8,7 @@ enableAnalyticsConsent();
  * Required contexts: page, storefront, searchResult
  */
 it("is sent on search bar product click", { tags: "@skipSaas" }, () => {
-  cy.visit("/");
+  visitWithAnalyticsConsent("/");
   cy.waitForResource("commerce-events-collector.js").then(() => {
     cy.window()
       .its("adobeDataLayer")

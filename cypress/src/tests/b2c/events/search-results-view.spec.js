@@ -1,5 +1,5 @@
 import { expectsEventWithContext } from "../../../assertions";
-import { enableAnalyticsConsent } from "./consentTestSupport";
+import { enableAnalyticsConsent, visitWithAnalyticsConsent } from "./consentTestSupport";
 
 enableAnalyticsConsent();
 /**
@@ -8,13 +8,13 @@ enableAnalyticsConsent();
  * Required Contexts: page, storefront, searcResults
  */
 it("is sent on search bar view/render", { tags: "@skipSaas" }, () => {
-  cy.visit("/");
+  visitWithAnalyticsConsent("/");
   cy.get(".nav-search-button").should("be.visible").click();
   cy.get("#search").should("be.visible").type("cypress");
   cy.waitForResource("commerce-events-collector.js").then(() => {
     cy.window()
       .its("adobeDataLayer")
-      .then((adobeDataLayer) => {
+      .should((adobeDataLayer) => {
         expectsEventWithContext(
           "search-response-received",
           ["pageContext", "storefrontInstanceContext", "searchResultsContext"],
@@ -28,11 +28,11 @@ it(
   "is sent on search results page on view/render",
   { tags: "@skipSaas" },
   () => {
-    cy.visit("/search?q=cypress");
+    visitWithAnalyticsConsent("/search?q=cypress");
     cy.waitForResource("commerce-events-collector.js").then(() => {
       cy.window()
         .its("adobeDataLayer")
-        .then((adobeDataLayer) => {
+        .should((adobeDataLayer) => {
           expectsEventWithContext(
             "search-results-view",
             [

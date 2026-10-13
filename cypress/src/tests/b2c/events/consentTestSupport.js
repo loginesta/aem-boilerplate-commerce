@@ -21,6 +21,21 @@ export function enableAnalyticsConsent() {
       const url = new URL(win.location.href);
       url.searchParams.set('consent', 'accept');
       win.history.replaceState(null, '', url.toString());
+      win.__analyticsConsentGranted = false;
+      win.addEventListener('consent.update', (event) => {
+        win.__analyticsConsentGranted = event.detail?.consented === true;
+      });
     });
   });
+}
+
+export function waitForAnalyticsConsent() {
+  return cy.window().should((win) => {
+    expect(win.__analyticsConsentGranted, 'analytics consent applied').to.equal(true);
+  });
+}
+
+export function visitWithAnalyticsConsent(url, options) {
+  cy.visit(url, options);
+  return waitForAnalyticsConsent();
 }

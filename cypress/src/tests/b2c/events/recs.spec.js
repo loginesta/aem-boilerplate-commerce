@@ -1,5 +1,5 @@
 import { expectsEventWithContext } from "../../../assertions";
-import { enableAnalyticsConsent } from "./consentTestSupport";
+import { enableAnalyticsConsent, visitWithAnalyticsConsent } from "./consentTestSupport";
 
 enableAnalyticsConsent();
 /**
@@ -20,7 +20,7 @@ it(
   "api-request-sent, api-response-received, unit-impression-render",
   { tags: ["@skipSaas", "@skipPaas", "@skipAco"] },
   () => {
-    cy.visit(RECS_URL);
+    visitWithAnalyticsConsent(RECS_URL);
     cy.waitForResource("commerce-events-collector.js").then(() => {
       cy.window()
         .its("adobeDataLayer")
@@ -55,7 +55,7 @@ it(
 // Skipping until events are updated with ticket https://jira.corp.adobe.com/browse/COMOPT-421
 it("recs-unit-view", { tags: ["@skipSaas", "@skipPaas", "@skipAco"] }, () => {
   cy.viewport(1440, 600);
-  cy.visit(RECS_URL);
+  visitWithAnalyticsConsent(RECS_URL);
   cy.waitForResource("commerce-events-collector.js").then(() => {
     cy.get(".product-recommendations-wrapper").scrollIntoView({
       duration: 1000,
@@ -94,7 +94,7 @@ it("recs-unit-view", { tags: ["@skipSaas", "@skipPaas", "@skipAco"] }, () => {
 });
 // Skipping until events are updated with ticket https://jira.corp.adobe.com/browse/COMOPT-421
 it("recs-item-click", { tags: ["@skipSaas", "@skipPaas", "@skipAco"] }, () => {
-  cy.visit(RECS_URL);
+  visitWithAnalyticsConsent(RECS_URL);
   cy.waitForResource("commerce-events-collector.js").then(() => {
     cy.window().then((win) => {
       cy.spy(win.adobeDataLayer, "push").as("adl");
@@ -134,7 +134,7 @@ it("recs-item-click", { tags: ["@skipSaas", "@skipPaas", "@skipAco"] }, () => {
 });
 // Skipping until events are updated with ticket https://jira.corp.adobe.com/browse/COMOPT-421
 it("reqs-item-add-to-cart", { tags: ["@skipSaas", "@skipPaas", "@skipAco"] }, () => {
-  cy.visit(RECS_URL);
+  visitWithAnalyticsConsent(RECS_URL);
   cy.waitForResource("commerce-events-collector.js").then(() => {
     cy.window().then((win) => {
       cy.spy(win.adobeDataLayer, "push").as("adl");

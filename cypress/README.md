@@ -125,7 +125,10 @@ revocation, retained storage, duplicate imports and absence of new Commerce
 collector requests after revocation, including timer advancement and unload.
 The positive initialization suite verifies contexts on home, PDP, cart and checkout.
 Analytics event specs use `consentTestSupport` to apply `?consent=accept` before
-each document load, including full navigations and reloads. The dedicated
+each document load and wait for `consent.update` before interacting, including
+full navigations and reloads. This override works because Cypress runs the local
+storefront on a loopback host; it is ignored on AEM preview/live and merchant
+domains. The dedicated
 `consent.spec.js` intentionally does not use that helper because it verifies
 default denial, explicit decline, acceptance and revocation. Specs skipped for
 all configured environments remain skipped.

@@ -16,6 +16,9 @@ let consentedLoaded = false;
  * @returns {boolean} true if the user has consented
  */
 function hasConsent() {
+  const localTestHosts = new Set(['localhost', '127.0.0.1', '[::1]']);
+  if (!localTestHosts.has(window.location.hostname)) return false;
+
   const consent = new URLSearchParams(window.location.search).get('consent');
   if (consent !== null) {
     return ['accept', 'true', '1', 'yes'].includes(consent.toLowerCase());

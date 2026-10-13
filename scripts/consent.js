@@ -23,10 +23,9 @@ let consented = false;
  * recognized Commerce topic. Invalid and unknown topics are denied.
  * @param {string} [topic=''] Topic identifier, or an empty string for global consent.
  * @returns {boolean} Whether the requested consent has been granted.
- * @todo SI to Replace the consent-check.js testing placeholder with the merchant's
- * CMP integration so it emits consent.update with the agreed boolean payload.
- * If the CMP provides per-category decisions, map those categories to Commerce
- * topics here while keeping this consumer API stable.
+ * @todo SI: Replace or connect the consent-check.js testing placeholder to the
+ * merchant's CMP so it emits consent.update with the agreed global boolean.
+ * Map separate CMP categories to Commerce topics only if the CMP provides them.
  */
 export function getConsent(topic = '') {
   if (topic === '') {

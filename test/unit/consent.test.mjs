@@ -178,6 +178,19 @@ test('upstream query accepts documented values and defaults to denied', async ()
   }
 });
 
+test('consent query override is ignored on AEM preview and storefront hosts', async () => {
+  for (const hostname of [
+    'branch--repo--owner.aem.page',
+    'www.storefront.example',
+    'main--repo--owner.aem.live',
+  ]) {
+    const app = await loadAnalytics({ hostname, search: '?consent=accept' });
+    await app.load('consent-check.js');
+    await app.settle();
+    assert.deepEqual(app.imports, []);
+  }
+});
+
 test('testing placeholder warning is emitted once per load, regardless of query override', async () => {
   for (const search of ['', '?consent=accept']) {
     const app = await loadAnalytics({ search, analytics: null });
@@ -306,17 +319,26 @@ test('collector subscriptions replay only authorized events, including those gen
   };
   window.adobeDataLayer.push({ event: 'page-view', eventInfo: { id: 'denied' } });
   update(true);
+  analyticsEvents.namespace.startAnalyticsEventCapture();
   // Accepted events can arrive before the collector registers its subscriptions.
   window.adobeDataLayer.push({ event: 'page-view', eventInfo: { id: 'accepted-while-loading' } });
   analyticsEvents.namespace.configureAnalyticsSubscriptions(sdk);
   sdk.subscribe.pageView((event) => received.push(event.eventInfo.id));
   sdk.subscribe.searchRequestSent((event) => received.push(event.eventInfo.id));
   assert.deepEqual(received, ['accepted-while-loading']);
+  analyticsEvents.namespace.finishAnalyticsEventCapture();
+  const lateSubscriber = [];
+  sdk.subscribe.pageView((event) => lateSubscriber.push(event.eventInfo.id));
+  assert.deepEqual(lateSubscriber, []);
   window.adobeDataLayer.push({ event: 'search-request-sent', eventInfo: { id: 'accepted-future' } });
   assert.deepEqual(received, ['accepted-while-loading', 'accepted-future']);
+  assert.deepEqual(lateSubscriber, []);
+  window.adobeDataLayer.push({ event: 'page-view', eventInfo: { id: 'accepted-after-load' } });
+  assert.deepEqual(received, ['accepted-while-loading', 'accepted-future', 'accepted-after-load']);
+  assert.deepEqual(lateSubscriber, ['accepted-after-load']);
   update(false);
   window.adobeDataLayer.push({ event: 'page-view', eventInfo: { id: 'revoked' } });
-  assert.equal(received.length, 2);
+  assert.equal(received.length, 3);
   update(true);
   const newSubscriber = [];
   const handler = (event) => newSubscriber.push(event.eventInfo.id);
@@ -328,7 +350,7 @@ test('collector subscriptions replay only authorized events, including those gen
   sdk.unsubscribe.pageView(() => {});
   window.adobeDataLayer.push({ event: 'page-view', eventInfo: { id: 'unsubscribed' } });
   assert.deepEqual(newSubscriber, ['reaccepted']);
-  assert.equal(past.length, 6);
+  assert.equal(past.length, 7);
 });
 
 // --- Page-loading regression: ACDL readiness before delayed consent ---

@@ -227,12 +227,18 @@ export async function loadRecommendationReaders() {
  * @returns {Promise<object>} Browser doubles, import/push/Alloy recordings,
  *  and load/update/settle controls for executing and completing scenarios.
  */
-export async function loadAnalytics({ search = '', prerendering = false, beforeImport, analytics = {} } = {}) {
+export async function loadAnalytics({
+  search = '',
+  hostname = 'localhost',
+  prerendering = false,
+  beforeImport,
+  analytics = {},
+} = {}) {
   const window = new EventTarget();
   const document = new EventTarget();
   document.prerendering = prerendering;
   document.cookie = '';
-  window.location = { search };
+  window.location = { search, hostname };
   const pushes = [];
   const imports = [];
   const pendingImports = [];

@@ -1,6 +1,6 @@
 import { expectsEventWithContext } from "../../../assertions";
 import { products } from "../../../fixtures";
-import { enableAnalyticsConsent } from "./consentTestSupport";
+import { enableAnalyticsConsent, visitWithAnalyticsConsent } from "./consentTestSupport";
 
 enableAnalyticsConsent();
 /**
@@ -9,7 +9,7 @@ enableAnalyticsConsent();
  * Required Contexts: page, storefront, product, shoppingCart
  */
 it("is sent on product page view/render", () => {
-  cy.visit(products.configurable.urlPath);
+  visitWithAnalyticsConsent(products.configurable.urlPath);
   cy.waitForResource("commerce-events-collector.js").then(() => {
     cy.window()
       .its("adobeDataLayer")

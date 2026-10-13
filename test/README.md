@@ -17,11 +17,15 @@ The upstream binary `consent.update` payload (`detail.consented`) controls both
 generic consented scripts; Commerce consumers continue to query their own topic.
 An explicit `undefined` uses the default empty topic. Other invalid values such
 as `null`, `false` and `0` are denied, even when global consent is granted.
-The URL override remains the upstream testing aid, not a production CMP.
+The upstream `?consent=accept` / `?consent=decline` override is honored only on
+loopback hosts (`localhost`, `127.0.0.1`, `[::1]`). It is ignored on AEM preview,
+live and merchant storefront domains, so a URL parameter cannot grant production
+consent. The override remains a local testing aid, not a production CMP.
 
-SI integration must replace the placeholder consent decision with its CMP and
-map categories to topics. This phase does not implement a modal or persist a
-consent preference. Analytics synchronizes the collector's documented `mg_dnt`
+SI integration must connect the merchant's CMP to the consent.update contract;
+the current global boolean is sufficient. Map categories to Commerce topics only
+if the CMP provides separate category decisions. This phase does not implement
+a modal or persist a consent preference. Analytics synchronizes the collector's documented `mg_dnt`
 transport opt-out cookie; this is not the future CMP preference cookie.
 
 Revocation retains the store's product and purchase histories unchanged. It
@@ -31,9 +35,11 @@ History listeners use future-only ACDL events; activation/acceptance records the
 current product, but does not replay past purchases.
 
 Analytics subscriptions also exclude pre-consent events. The analytics event
-adapter buffers only authorized events in memory so those generated while the
-SDK/collector are loading are not lost. Revocation clears this transient buffer,
-not localStorage or ACDL. On first analytics initialization, the SDK publishes
+adapter buffers authorized events in memory only while the SDK and collector
+load, so events generated during setup are not lost. Once collector subscriptions
+are configured, the adapter stops capture and clears the buffer; revocation also
+clears it. Neither action clears localStorage or ACDL. On first analytics
+initialization, the SDK publishes
 one current page view instead of replaying the page's earlier views. Subscription
 removal still delegates to the original SDK for callbacks not owned by the adapter.
 The delayed phase waits for ACDL initialization to avoid reclassifying queued
