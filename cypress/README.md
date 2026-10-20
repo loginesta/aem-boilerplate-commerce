@@ -129,8 +129,9 @@ npm run cypress:saas:run -- --spec 'src/tests/b2c/events/*.spec.js,src/tests/b2c
 The dedicated `events/consent.spec.js` checks exact lowercase URL opt-in,
 retained denied events, real SDK/collector execution and intercepted Commerce
 transport, native subscription replay during slow collector loading, ACDL-before-
-consent startup, prerender activation deferral, missing analytics config, and
-independent history deduplication/20-entry caps. Each case uses fresh document
+consent startup, prerender activation deferral, missing analytics config, denied
+history writes, and accepted history deduplication/20-entry caps even without
+analytics config. Each case uses fresh document
 state and real checked-in libraries; only outbound collector HTTP is stubbed.
 AEP configuration is removed from the fetched test config to isolate Commerce
 transport. Held module responses are real bodies and are released in teardown.
@@ -142,8 +143,10 @@ checkout, plus query retention across clicked navigation and reload.
 `consentTestSupport` reapplies `consent=accept` before every document's scripts,
 preserving queries/hashes, and waits for the executed SDK and Commerce forwarding
 state rather than a resource entry or notification. The dedicated gate spec
-intentionally does not use this helper. The history hydration spec requires no
-consent parameter; recommendation requests/history use remain independent.
+intentionally does not use this helper. Product-history hydration visits explicitly
+opt in and wait for history storage before navigating; the separate cart-cache
+case still requires no consent parameter. Recommendation requests and reads of
+previously stored history remain unchanged.
 
 For the search specs skipped on SaaS, restart the owned server against
 `https://main--boilerplate-paas--adobe-commerce.aem.live/`, then run:

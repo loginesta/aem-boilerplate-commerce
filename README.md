@@ -49,10 +49,13 @@ subscriptions replay retained events; no custom queue, topic framework, or
 additional initial page-view publication is used. Without analytics config,
 neither analytics library loads.
 
-Product-view and purchase histories retain their existing store-specific
-localStorage behavior independently of this gate. Recommendations still read
-those histories and pass them to the recommendation service as GraphQL inputs;
-collector gating does **not** block those separate requests or history use.
+Product-view and purchase history listeners are registered only when that same
+one-shot `consent.update` decision grants consent. History recording does not
+require an `analytics` configuration; accepted documents retain store-specific
+localStorage formats, native past/future hydration, SKU deduplication, and limits.
+Declined documents do not write history or delete existing records. Recommendation
+reads of previously stored history and their separate GraphQL requests remain
+unchanged; the collector gate does **not** block those requests or history reads.
 
 This URL opt-in is an integration/testing placeholder, not a stored preference,
 production CMP, revocation mechanism, or privacy-compliance solution. A merchant

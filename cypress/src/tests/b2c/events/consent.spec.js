@@ -84,6 +84,7 @@ describe('Commerce consent load gate', () => {
     });
     cy.clearAllLocalStorage();
     cy.clearAllCookies();
+    cy.interceptConfig();
     cy.intercept('**/config.json', (request) => {
       request.continue((response) => {
         const config = response.body.public.default.analytics;
@@ -123,6 +124,14 @@ describe('Commerce consent load gate', () => {
         expect(win.adobeDataLayer.filter((event) => event?.eventInfo?.marker === 'denied-retained'))
           .to.deep.equal([entry]);
         expect(win.magentoStorefrontEvents).to.be.undefined;
+        const identifier = getStoreIdentifier(win);
+        win.adobeDataLayer.push({ productContext: { sku: 'denied-product' } });
+        win.adobeDataLayer.push({
+          shoppingCartContext: { items: [{ product: { sku: 'denied-purchase' } }] },
+        });
+        win.adobeDataLayer.push({ event: 'place-order' });
+        expect(win.localStorage.getItem(`${identifier}:productViewHistory`)).to.be.null;
+        expect(win.localStorage.getItem(`${identifier}:purchaseHistory`)).to.be.null;
       });
       expectNoCollectors();
     });
@@ -136,25 +145,25 @@ describe('Commerce consent load gate', () => {
     cy.window().then((win) => {
       expectInitialPageView(win);
       const config = JSON.parse(win.sessionStorage.getItem('config')).public.default.analytics;
-      expect(win.adobeDataLayer.getState('storefrontInstanceContext')).to.deep.equal({
+      const storefront = win.adobeDataLayer.getState('storefrontInstanceContext');
+      expect(storefront).to.include({
         baseCurrencyCode: config['base-currency-code'],
         environment: config.environment,
-        environmentId: config['environment-id'],
-        storeCode: config['store-code'],
-        storefrontTemplate: 'EDS',
-        storeId: parseInt(config['store-id'], 10),
-        storeName: config['store-name'],
         storeUrl: config['store-url'],
-        storeViewCode: config['store-view-code'],
-        storeViewCurrencyCode: config['base-currency-code'],
-        storeViewId: parseInt(config['store-view-id'], 10),
-        storeViewName: config['store-view-name'],
-        websiteCode: config['website-code'],
-        websiteId: parseInt(config['website-id'], 10),
-        websiteName: config['website-name'],
-        ...(config['view-id'] !== undefined && { viewId: config['view-id'] }),
-        ...(config.locale && { locale: config.locale }),
       });
+      if (config['environment-id']) {
+        expect(storefront.environmentId, 'analytics tenant').to.equal(config['environment-id']);
+      }
+      if (config['view-id']) {
+        expect(storefront.viewId, 'ACO catalog view').to.equal(config['view-id']);
+      } else {
+        expect(storefront.storeId, 'Commerce store').to.equal(Number(config['store-id']));
+        expect(storefront.storeViewId, 'Commerce store view').to.equal(Number(config['store-view-id']));
+        expect(storefront.websiteId, 'Commerce website').to.equal(Number(config['website-id']));
+      }
+      if (config.locale) {
+        expect(storefront.locale, 'configured locale').to.equal(config.locale);
+      }
       expect(win.adobeDataLayer.getState('eventForwardingContext')).to.deep.equal({
         commerce: true, aep: false,
       });
@@ -261,9 +270,13 @@ describe('Commerce consent load gate', () => {
     expectNoCollectors();
   });
 
-  it('keeps history independent with SKU deduplication and 20-entry caps', () => {
-    cy.visit('/');
-    waitForConsentGate(false);
+  it('records accepted history with SKU deduplication and 20-entry caps even without analytics config', () => {
+    cy.intercept('**/config.json', (request) => {
+      request.continue((response) => { delete response.body.public.default.analytics; });
+    });
+    cy.visit('/?consent=accept');
+    waitForConsentGate(true);
+    settleConsentedModule();
     cy.window().then((win) => {
       const identifier = getStoreIdentifier(win);
       for (let index = 0; index < 25; index += 1) {

@@ -313,8 +313,10 @@ export async function loadCommerceLazy() {
   // Initialize Adobe Client Data Layer
   await import('./acdl/adobe-client-data-layer.min.js');
 
-  // Track history
-  trackHistory();
+  // The delayed consent gate runs after loadCommerceLazy() completes.
+  window.addEventListener('consent.update', ({ detail }) => {
+    if (detail?.consented === true) trackHistory();
+  }, { once: true });
 }
 
 /**
