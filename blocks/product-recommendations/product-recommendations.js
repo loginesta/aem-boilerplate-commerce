@@ -21,9 +21,8 @@ import { render as wishlistRender } from '@dropins/storefront-wishlist/render.js
 // Block-level
 import { readBlockConfig } from '../../scripts/aem.js';
 import {
-  fetchPlaceholders, getProductLink, getStoreIdentifier, getConsent,
+  fetchPlaceholders, getProductLink, getStoreIdentifier,
 } from '../../scripts/commerce.js';
-import { CONSENT_TOPICS } from '../../scripts/consent.js';
 
 // Initializers
 import '../../scripts/initializers/recommendations.js';
@@ -52,7 +51,6 @@ function getValidViewEntry(entry) {
  * @returns {Array} - Array of view history items
  */
 export function getProductViewHistory() {
-  if (!getConsent(CONSENT_TOPICS.RECOMMENDATIONS)) return [];
   const storeIdentifier = getStoreIdentifier();
   try {
     if (!storeIdentifier) {
@@ -95,7 +93,6 @@ function getValidPurchaseEntry(entry) {
  * @returns {Array} - Array of purchase history items
  */
 export function getPurchaseHistory() {
-  if (!getConsent(CONSENT_TOPICS.RECOMMENDATIONS)) return [];
   const storeIdentifier = getStoreIdentifier();
   try {
     if (!storeIdentifier) {
@@ -146,7 +143,6 @@ export default async function decorate(block) {
   let visibility = !isMobile;
   let isLoading = false;
   let loadTimeout = null;
-  let recommendationList;
 
   async function loadRecommendation(
     context,
@@ -183,7 +179,6 @@ export default async function decorate(block) {
 
     // Get purchase history
     context.userPurchaseHistory = getPurchaseHistory();
-    const historyConsented = getConsent(CONSENT_TOPICS.RECOMMENDATIONS);
 
     let recommendationsData = null;
 
@@ -218,7 +213,7 @@ export default async function decorate(block) {
         ? { sku: resolvedSku, ...(resolvedPrice != null && { price: resolvedPrice }) }
         : undefined;
 
-      [recommendationList] = await Promise.all([
+      await Promise.all([
         provider.render(ProductList, {
           routeProduct: createProductLink,
           recId: recid,
@@ -311,33 +306,12 @@ export default async function decorate(block) {
           },
         })($wrapper),
       ]);
-      if (historyConsented !== getConsent(CONSENT_TOPICS.RECOMMENDATIONS)) {
-        updateRecommendationHistory();
-      }
     } finally {
       isLoading = false;
     }
   }
 
   const context = {};
-  let recommendationConsented = getConsent(CONSENT_TOPICS.RECOMMENDATIONS);
-  function updateRecommendationHistory() {
-    context.userViewHistory = getProductViewHistory();
-    context.userPurchaseHistory = getPurchaseHistory();
-    if (recommendationList) {
-      recommendationList.setProps((previous) => ({
-        ...previous,
-        userViewHistory: context.userViewHistory,
-        userPurchaseHistory: context.userPurchaseHistory,
-      }));
-    }
-  }
-  window.addEventListener('consent.update', () => {
-    const consented = getConsent(CONSENT_TOPICS.RECOMMENDATIONS);
-    if (consented === recommendationConsented) return;
-    recommendationConsented = consented;
-    updateRecommendationHistory();
-  });
   // Debounced loader to prevent excessive API calls
   function debouncedLoadRecommendation(forceReload = false) {
     if (loadTimeout) {

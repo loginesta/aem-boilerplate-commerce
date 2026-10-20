@@ -13,7 +13,7 @@
 /**
  * Grants consent before each document's application scripts run in analytics tests.
  * The URL override is reapplied on full navigations and reloads; consent.spec.js
- * intentionally does not use this helper because it tests denial and revocation.
+ * intentionally does not use this helper because it tests the load-time gate.
  */
 export function enableAnalyticsConsent() {
   beforeEach(() => {
@@ -21,21 +21,20 @@ export function enableAnalyticsConsent() {
       const url = new URL(win.location.href);
       url.searchParams.set('consent', 'accept');
       win.history.replaceState(null, '', url.toString());
-      win.__analyticsConsentGranted = false;
-      win.addEventListener('consent.update', (event) => {
-        win.__analyticsConsentGranted = event.detail?.consented === true;
-      });
     });
   });
 }
 
 export function waitForAnalyticsConsent() {
   return cy.window().should((win) => {
-    expect(win.__analyticsConsentGranted, 'analytics consent applied').to.equal(true);
+    expect(win.magentoStorefrontEvents?.publish?.pageView, 'analytics SDK executed')
+      .to.be.a('function');
+    expect(win.adobeDataLayer.getState('eventForwardingContext')?.commerce,
+      'Commerce forwarding initialized').to.equal(true);
   });
 }
 
-export function visitWithAnalyticsConsent(url, options) {
-  cy.visit(url, options);
+export function visitWithAnalyticsConsent(url, options = {}) {
+  cy.visit(url, { ...options, qs: { ...options.qs, consent: 'accept' } });
   return waitForAnalyticsConsent();
 }
