@@ -35,11 +35,12 @@ This copies the built assets from `node_modules/@dropins` and the relevant `@ado
 
 ## Analytics loading
 
-`scripts/consent-check.js` makes one load-time decision: only the exact lowercase
-URL value `?consent=accept` loads `scripts/consented.js`, on any hostname. Missing,
-empty, unknown, and case-variant values do not load it. The `consent.update` event
-announces that decision; it is not an incoming CMP API. Later URL or event changes
-neither initialize nor revoke analytics in the current document.
+`scripts/consent-check.js` is unchanged from upstream: `accept`, `true`, `1`, and
+`yes` grant consent case-insensitively; missing, empty, and unknown values decline.
+Its inline `onConsentUpdate()` broadcasts `consent.update` before conditionally
+loading `consented.js`. The existing delayed phase imports that module after ACDL
+is ready. The upstream gate does not subscribe to later events or automatically
+initialize/revoke analytics when the URL or a notification changes.
 
 Adobe Client Data Layer creation and event/context writes remain unconditional.
 Startup waits for the real data layer before checking consent. With acceptance
@@ -49,13 +50,18 @@ subscriptions replay retained events; no custom queue, topic framework, or
 additional initial page-view publication is used. Without analytics config,
 neither analytics library loads.
 
-Product-view and purchase history listeners are registered only when that same
-one-shot `consent.update` decision grants consent. History recording does not
-require an `analytics` configuration; accepted documents retain store-specific
-localStorage formats, native past/future hydration, SKU deduplication, and limits.
-Declined documents do not write history or delete existing records. Recommendation
-reads of previously stored history and their separate GraphQL requests remain
-unchanged; the collector gate does **not** block those requests or history reads.
+Product-view and purchase history remain in localStorage independently of consent,
+retaining store-specific formats, native past/future hydration, SKU deduplication,
+and limits. Recommendation API requests remain available without consent, but
+omit viewing history, purchase history, cart SKUs, and shopper-derived pricing.
+The recommendation initializer retains its original shared Catalog Service
+endpoint and header configuration. Current-product SKUs and explicitly authored
+block prices remain available. Commerce captures the latest `consent.update`
+boolean in memory, defaulting to false for each document. Blocks consume that
+existing event without awaiting it: they initially omit history/cart inputs,
+update the mounted list after acceptance, and let late-added blocks read the
+captured decision. No consent preference is persisted and no new event type,
+topic framework, or separate consent module is introduced.
 
 This URL opt-in is an integration/testing placeholder, not a stored preference,
 production CMP, revocation mechanism, or privacy-compliance solution. A merchant

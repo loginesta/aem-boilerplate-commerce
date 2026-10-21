@@ -126,13 +126,18 @@ From `cypress/`, run the consent, positive event/navigation, and history cases:
 npm run cypress:saas:run -- --spec 'src/tests/b2c/events/*.spec.js,src/tests/b2c/verifyRecsStorageHydration.spec.js' --config retries=0
 ```
 
-The dedicated `events/consent.spec.js` checks exact lowercase URL opt-in,
+The dedicated `events/consent.spec.js` checks upstream's URL consent values,
 retained denied events, real SDK/collector execution and intercepted Commerce
 transport, native subscription replay during slow collector loading, ACDL-before-
-consent startup, prerender activation deferral, missing analytics config, denied
-history writes, and accepted history deduplication/20-entry caps even without
-analytics config. Each case uses fresh document
-state and real checked-in libraries; only outbound collector HTTP is stubbed.
+consent startup, prerender activation deferral, missing analytics config, and local
+history deduplication/20-entry caps. Recommendation privacy cases start with
+stored viewing/purchase histories, add a real product to the cart, and reload:
+requests remain available but must omit history/cart inputs until the accepted
+notification. A held upstream script proves requests initially omit those inputs
+and the mounted list updates after the real notification.
+Late-block cases load backend-authored recommendation blocks after accepted and
+declined notifications. Each case uses real checked-in libraries; outbound
+collector HTTP and recommendation responses are stubbed in the privacy cases.
 AEP configuration is removed from the fetched test config to isolate Commerce
 transport. Held module responses are real bodies and are released in teardown.
 The consent notification synchronizes the decision, not analytics readiness;
@@ -143,10 +148,14 @@ checkout, plus query retention across clicked navigation and reload.
 `consentTestSupport` reapplies `consent=accept` before every document's scripts,
 preserving queries/hashes, and waits for the executed SDK and Commerce forwarding
 state rather than a resource entry or notification. The dedicated gate spec
-intentionally does not use this helper. Product-history hydration visits explicitly
-opt in and wait for history storage before navigating; the separate cart-cache
-case still requires no consent parameter. Recommendation requests and reads of
-previously stored history remain unchanged.
+intentionally does not use this helper. Product-history hydration and cart-cache
+cases require no consent parameter: recording local data is independent of
+permission to transmit it. The context matrix and display specs additionally
+exercise real recommendation responses and public current-product anchors.
+
+Shared image-list assertions re-query the current image by selector and index
+after scrolling, then require both visibility and `naturalWidth > 0`. This keeps
+the assertions valid when an asynchronous carousel or grid redraw replaces nodes.
 
 For the search specs skipped on SaaS, restart the owned server against
 `https://main--boilerplate-paas--adobe-commerce.aem.live/`, then run:

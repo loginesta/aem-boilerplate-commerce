@@ -53,6 +53,7 @@ function waitForAnalytics() {
 
 describe('Commerce consent load gate', () => {
   let releases;
+  let observedConsent;
 
   // Hold the real response body, never replace a library with a mock.
   function holdModule(path, alias) {
@@ -75,14 +76,16 @@ describe('Commerce consent load gate', () => {
   beforeEach(() => {
     releases = [];
     cy.on('window:before:load', (win) => {
-      win.localStorage.clear();
-      win.sessionStorage.clear();
+      observedConsent = false;
+      win.sessionStorage.removeItem('config');
       win.__consentDecisions = [];
       win.addEventListener('consent.update', (event) => {
+        observedConsent = event.detail?.consented === true;
         win.__consentDecisions.push(event.detail);
       });
     });
     cy.clearAllLocalStorage();
+    cy.clearAllSessionStorage();
     cy.clearAllCookies();
     cy.interceptConfig();
     cy.intercept('**/config.json', (request) => {
@@ -113,8 +116,7 @@ describe('Commerce consent load gate', () => {
     releases.forEach((release) => release());
   });
 
-  ['/', '/?consent=', '/?consent=decline', '/?consent=true', '/?consent=1',
-    '/?consent=yes', '/?consent=ACCEPT', '/?consent=invalid'].forEach((url) => {
+  ['/', '/?consent=', '/?consent=decline', '/?consent=invalid'].forEach((url) => {
     it(`retains data without loading collectors at ${url}`, () => {
       cy.visit(url);
       waitForConsentGate(false);
@@ -124,16 +126,165 @@ describe('Commerce consent load gate', () => {
         expect(win.adobeDataLayer.filter((event) => event?.eventInfo?.marker === 'denied-retained'))
           .to.deep.equal([entry]);
         expect(win.magentoStorefrontEvents).to.be.undefined;
-        const identifier = getStoreIdentifier(win);
-        win.adobeDataLayer.push({ productContext: { sku: 'denied-product' } });
-        win.adobeDataLayer.push({
-          shoppingCartContext: { items: [{ product: { sku: 'denied-purchase' } }] },
-        });
-        win.adobeDataLayer.push({ event: 'place-order' });
-        expect(win.localStorage.getItem(`${identifier}:productViewHistory`)).to.be.null;
-        expect(win.localStorage.getItem(`${identifier}:purchaseHistory`)).to.be.null;
       });
       expectNoCollectors();
+    });
+  });
+
+  ['true', '1', 'yes', 'ACCEPT'].forEach((consent) => {
+    it(`loads analytics for upstream consent value ${consent}`, () => {
+      cy.visit('/', { qs: { consent } });
+      waitForConsentGate(true);
+      settleConsentedModule();
+      waitForAnalytics();
+      cy.window().then(expectInitialPageView);
+    });
+  });
+
+  function visitWithStoredHistory(consented, path = Cypress.env('prexPages').pdpAcdlOnly) {
+    cy.request('/config.json').then(({ body }) => {
+      const config = body.public.default;
+      const headers = { ...config.headers?.all, ...config.headers?.cs };
+      const name = Object.keys(headers).find(
+        (key) => ['magento-store-view-code', 'ac-view-id'].includes(key.toLowerCase()),
+      );
+      expect(name, 'configured history store').to.exist;
+      const identifier = headers[name];
+      cy.visit(path, {
+        qs: consented ? { consent: 'accept' } : {},
+        onBeforeLoad(win) {
+          const date = '2026-01-01T00:00:00.000Z';
+          win.localStorage.setItem(`${identifier}:productViewHistory`, JSON.stringify([
+            { sku: 'ADB156', date },
+          ]));
+          win.localStorage.setItem(`${identifier}:purchaseHistory`, JSON.stringify([
+            { items: ['ADB174'], date },
+          ]));
+        },
+      });
+    });
+  }
+
+  function interceptRecommendations() {
+    cy.intercept({ method: 'GET', url: /recommendationsByUnitIds/ }, (request) => {
+      const variables = JSON.parse(new URL(request.url).searchParams.get('variables'));
+      if (observedConsent) {
+        expect(variables.userViewHistory.map((entry) => entry.sku)).to.include('ADB156');
+        expect(variables.userPurchaseHistory).to.deep.include({
+          items: ['ADB174'], date: '2026-01-01T00:00:00.000Z',
+        });
+      } else {
+        ['userViewHistory', 'userPurchaseHistory', 'cartSkus'].forEach((key) => {
+          expect(variables, `unconsented recommendation inputs exclude ${key}`)
+            .not.to.have.property(key);
+        });
+        expect(variables, 'unconsented PDP request excludes shopper-derived price')
+          .not.to.have.property('currentProduct');
+      }
+      request.reply({ data: { recommendationsByUnitIds: { results: [], totalResults: 0 } } });
+    }).as('privateRecommendations');
+  }
+
+  [false, true].forEach((consented) => {
+    it(`${consented ? 'includes' : 'withholds'} personal recommendation inputs across cart interaction and reload`, () => {
+      interceptRecommendations();
+      visitWithStoredHistory(consented);
+      waitForConsentGate(consented);
+      cy.wait('@privateRecommendations');
+      if (consented) waitForAnalytics();
+
+      let beforeCart;
+      cy.get('@privateRecommendations.all').then((requests) => { beforeCart = requests.length; });
+      cy.get('.product-details__buttons__add-to-cart button')
+        .should('be.visible').and('not.be.disabled').click();
+      cy.get('.nav-cart-button').should('have.attr', 'data-count', '1');
+      cy.get('@privateRecommendations.all').should((requests) => {
+        expect(requests.length, 'recommendations reload after adding to cart').to.be.greaterThan(beforeCart);
+        if (consented) {
+          const variables = JSON.parse(new URL(requests[requests.length - 1].request.url)
+            .searchParams.get('variables'));
+          expect(variables.cartSkus).to.include('ADB125');
+          if (Cypress.env('catalogApiKey')) {
+            expect(variables.currentProduct).to.include({ sku: 'ADB125' });
+            expect(variables.currentProduct.price).to.be.a('number');
+          }
+        }
+      });
+
+      let beforeReload;
+      cy.get('@privateRecommendations.all').then((requests) => { beforeReload = requests.length; });
+      cy.reload();
+      waitForConsentGate(consented);
+      cy.get('@privateRecommendations.all').should((requests) => {
+        expect(requests.length, 'recommendations remain available after reload').to.be.greaterThan(beforeReload);
+      });
+      if (consented) {
+        waitForAnalytics();
+      } else {
+        expectNoCollectors();
+      }
+    });
+  });
+
+  it('withholds history until the real upstream notification, then updates the mounted list', () => {
+    const gate = holdModule('**/scripts/consent-check.js', 'consentGate');
+    interceptRecommendations();
+    visitWithStoredHistory(true);
+    gate.waitForStart();
+    cy.wait('@privateRecommendations');
+    expectNoCollectors();
+    gate.release();
+    waitForConsentGate(true);
+    waitForAnalytics();
+    cy.get('@privateRecommendations.all').should((requests) => {
+      const variables = JSON.parse(new URL(requests[requests.length - 1].request.url)
+        .searchParams.get('variables'));
+      expect(variables.userViewHistory.map((entry) => entry.sku)).to.include('ADB156');
+      expect(variables.userPurchaseHistory).to.deep.include({
+        items: ['ADB174'], date: '2026-01-01T00:00:00.000Z',
+      });
+    });
+    cy.get('.recommendations-product-list').should('have.length', 1);
+  });
+
+  function appendAuthoredRecommendationBlock() {
+    cy.request(`${Cypress.env('prexPages').displayPlp}.plain.html`).then(({ body }) => {
+      cy.window().then((win) => {
+        const fragment = win.document.createRange().createContextualFragment(body);
+        const authored = fragment.querySelector('.product-recommendations');
+        expect(authored, 'backend-authored recommendation block').not.to.equal(null);
+        const script = win.document.createElement('script');
+        script.type = 'module';
+        script.nonce = 'aem';
+        script.dataset.lateRecommendation = 'true';
+        script.textContent = `
+          import { decorateBlock, loadBlock } from '/scripts/aem.js';
+          const section = document.createElement('div');
+          section.className = 'section';
+          section.dataset.sectionStatus = 'loaded';
+          section.innerHTML = ${JSON.stringify(authored.outerHTML)};
+          document.querySelector('main').appendChild(section);
+          const block = section.querySelector('.product-recommendations');
+          decorateBlock(block);
+          await loadBlock(block);
+          document.querySelector('script[data-late-recommendation]').remove();
+        `;
+        script.onerror = () => { script.remove(); throw new Error('Late block failed to initialize'); };
+        win.document.head.appendChild(script);
+      });
+    });
+  }
+
+  it('uses the captured decision for blocks first loaded after the upstream notification', () => {
+    interceptRecommendations();
+    [false, true].forEach((consented) => {
+      visitWithStoredHistory(consented, '/');
+      waitForConsentGate(consented);
+      if (consented) waitForAnalytics();
+      appendAuthoredRecommendationBlock();
+      cy.wait('@privateRecommendations');
+      cy.get('.product-recommendations').should('have.attr', 'data-block-status', 'loaded');
+      if (!consented) expectNoCollectors();
     });
   });
 
@@ -220,9 +371,9 @@ describe('Commerce consent load gate', () => {
 
   it('waits for real ACDL initialization before starting the consent gate', () => {
     const acdl = holdModule('**/scripts/acdl/adobe-client-data-layer.min.js', 'acdl');
-    cy.visit('/?consent=accept');
+    cy.visit(Cypress.env('prexPages').pdpAcdlOnly, { qs: { consent: 'accept' } });
     acdl.waitForStart();
-    cy.get('@consentGate.all').should('have.length', 0);
+    cy.window().its('__consentDecisions').should('deep.equal', []);
     expectNoCollectors();
     acdl.release();
     waitForConsentGate(true);

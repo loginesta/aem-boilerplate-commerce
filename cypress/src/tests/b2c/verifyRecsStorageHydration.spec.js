@@ -36,7 +36,7 @@ function waitForProductContextSku(sku) {
     expect(ctx?.sku, 'productContext.sku').to.equal(sku);
     const identifier = getStoreViewIdentifier(win);
     const history = JSON.parse(win.localStorage.getItem(`${identifier}:productViewHistory`) || '[]');
-    expect(history.map((entry) => entry.sku), 'consented product history recorded').to.include(sku);
+    expect(history.map((entry) => entry.sku), 'product history recorded').to.include(sku);
   });
 }
 
@@ -44,13 +44,13 @@ function waitForProductContextSku(sku) {
 describe('Verify recs-related client storage hydration', { tags: '@skipPaas' }, () => {
   it('records viewed PDPs in productViewHistory keyed by store view code / ac-view-id', () => {
     PRODUCT_VIEW_HISTORY_PRODUCTS.forEach(({ sku, path }) => {
-      cy.visit(path, { qs: { consent: 'accept' } });
+      cy.visit(path);
       waitForProductContextSku(sku);
     });
 
     // Simulate closing the last PDP tab and reopening the storefront home
     // page in the same browser session — localStorage persists across visits.
-    cy.visit('/', { qs: { consent: 'accept' } });
+    cy.visit('/');
 
     cy.window().should((win) => {
       const storeIdentifier = getStoreViewIdentifier(win);
@@ -70,7 +70,7 @@ describe('Verify recs-related client storage hydration', { tags: '@skipPaas' }, 
 
   it('never resolves an undefined productViewHistory key', () => {
     const { sku, path } = PRODUCT_VIEW_HISTORY_PRODUCTS[0];
-    cy.visit(path, { qs: { consent: 'accept' } });
+    cy.visit(path);
     waitForProductContextSku(sku);
 
     cy.window().should((win) => {

@@ -1,21 +1,40 @@
 let consentedLoaded = false;
 
 /**
- * Returns the document's URL opt-in, not a stored preference or CMP decision.
- * @returns {boolean} Whether consented scripts should load in this document.
+ * Dummy consent implementation.
+ *
+ * By default consent is declined, so consented scripts (analytics, martech, etc.)
+ * are not loaded. This stands in for a real CMP (OneTrust, etc.) and can be
+ * swapped out later.
+ *
+ * The default can be overridden with a query parameter for testing:
+ *   ?consent=accept   grant consent (loads consented.js)
+ *   ?consent=decline  decline consent (default behavior)
+ *
+ * @returns {boolean} true if the user has consented
  */
 function hasConsent() {
-  return new URLSearchParams(window.location.search).get('consent') === 'accept';
+  const consent = new URLSearchParams(window.location.search).get('consent');
+  if (consent !== null) {
+    return ['accept', 'true', '1', 'yes'].includes(consent.toLowerCase());
+  }
+  // default: decline
+  return false;
 }
 
-/** Loads consented scripts once. */
+/**
+ * Loads consented scripts once consent is available.
+ */
 function loadConsented() {
   if (consentedLoaded) return;
   consentedLoaded = true;
   import('./consented.js');
 }
 
-/** Notifies listeners of the one-shot decision before loading consented scripts. */
+/**
+ * Notifies listeners of the current consent state and loads consented
+ * scripts if consent has been granted.
+ */
 function onConsentUpdate() {
   const consented = hasConsent();
   window.dispatchEvent(new CustomEvent('consent.update', { detail: { consented } }));

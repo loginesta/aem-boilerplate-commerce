@@ -14,6 +14,17 @@ import {
 } from './aem.js';
 import initializeDropins from './initializers/index.js';
 
+let consentGranted = false;
+
+/** Returns the latest upstream consent notification for this document. */
+export function isConsentGranted() {
+  return consentGranted;
+}
+
+window.addEventListener('consent.update', ({ detail }) => {
+  consentGranted = detail?.consented === true;
+});
+
 /**
  * Sanitizes the given string by:
  * - convert to lower case
@@ -313,10 +324,7 @@ export async function loadCommerceLazy() {
   // Initialize Adobe Client Data Layer
   await import('./acdl/adobe-client-data-layer.min.js');
 
-  // The delayed consent gate runs after loadCommerceLazy() completes.
-  window.addEventListener('consent.update', ({ detail }) => {
-    if (detail?.consented === true) trackHistory();
-  }, { once: true });
+  trackHistory();
 }
 
 /**
