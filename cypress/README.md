@@ -114,25 +114,49 @@ curl -X POST https://admin.hlx.page/live/adobe-commerce/boilerplate-paas/main/me
 
 ## Consent verification
 
-With the local AEM server running, from `cypress/` run:
+Run a local AEM server against the sandbox content/config used by stacked PRs:
 
 ```sh
-npx cypress run --config-file cypress.base.config.js --spec src/tests/b2c/events/consent.spec.js --config retries=0
+npm start -- --url https://main--boilerplate-accs--adobe-commerce.aem.live/ --no-open
 ```
 
-The focused browser suite checks absent/declined consent, late acceptance,
-revocation, retained storage, duplicate imports and absence of new Commerce
-collector requests after revocation, including timer advancement and unload.
-The positive initialization suite verifies contexts on home, PDP, cart and checkout.
-Analytics event specs use `consentTestSupport` to apply `?consent=accept` before
-each document load and wait for `consent.update` before interacting, including
-full navigations and reloads. This override works because Cypress runs the local
-storefront on a loopback host; it is ignored on AEM preview/live and merchant
-domains. The dedicated
-`consent.spec.js` intentionally does not use that helper because it verifies
-default denial, explicit decline, acceptance and revocation. Specs skipped for
-all configured environments remain skipped.
+From `cypress/`, run the consent, positive event/navigation, and history cases:
 
-The focused verification does not validate a real AEP datastream. The complete
-existing e2e suite has not been run. For unit-test coverage and mocked boundaries,
-see [Consent unit tests](../test/README.md).
+```sh
+npm run cypress:saas:run -- --spec 'src/tests/b2c/events/*.spec.js,src/tests/b2c/verifyRecsStorageHydration.spec.js' --config retries=0
+```
+
+The dedicated `events/consent.spec.js` checks exact lowercase URL opt-in,
+retained denied events, real SDK/collector execution and intercepted Commerce
+transport, native subscription replay during slow collector loading, ACDL-before-
+consent startup, prerender activation deferral, missing analytics config, denied
+history writes, and accepted history deduplication/20-entry caps even without
+analytics config. Each case uses fresh document
+state and real checked-in libraries; only outbound collector HTTP is stubbed.
+AEP configuration is removed from the fetched test config to isolate Commerce
+transport. Held module responses are real bodies and are released in teardown.
+The consent notification synchronizes the decision, not analytics readiness;
+native nonce-bearing module scripts provide evaluation barriers where needed.
+
+The positive initialization suite verifies contexts on home, PDP, cart, and
+checkout, plus query retention across clicked navigation and reload.
+`consentTestSupport` reapplies `consent=accept` before every document's scripts,
+preserving queries/hashes, and waits for the executed SDK and Commerce forwarding
+state rather than a resource entry or notification. The dedicated gate spec
+intentionally does not use this helper. Product-history hydration visits explicitly
+opt in and wait for history storage before navigating; the separate cart-cache
+case still requires no consent parameter. Recommendation requests and reads of
+previously stored history remain unchanged.
+
+For the search specs skipped on SaaS, restart the owned server against
+`https://main--boilerplate-paas--adobe-commerce.aem.live/`, then run:
+
+```sh
+npm run cypress:run -- --spec 'src/tests/b2c/events/search-*.spec.js' --config retries=0
+```
+
+Respect configured skips and authentication prerequisites; skipped or blocked
+cases are not passing evidence. These cases do not validate a real AEP datastream.
+Prerender coverage emulates `document.prerendering` and its activation event, not
+real Chromium speculation. The URL gate is not a production CMP or a compliance
+claim; see [Analytics loading](../README.md#analytics-loading).

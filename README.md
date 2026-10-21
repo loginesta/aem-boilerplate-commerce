@@ -33,6 +33,34 @@ npm run install:dropins
 
 This copies the built assets from `node_modules/@dropins` and the relevant `@adobe/*` packages into `scripts/__dropins__`, and applies the GraphQL fragment/operation overrides in `build.mjs`. Edge Delivery Services serves the copied files directly, so this step must complete before `npm start` will reflect the correct drop-in behavior.
 
+## Analytics loading
+
+`scripts/consent-check.js` makes one load-time decision: only the exact lowercase
+URL value `?consent=accept` loads `scripts/consented.js`, on any hostname. Missing,
+empty, unknown, and case-variant values do not load it. The `consent.update` event
+announces that decision; it is not an incoming CMP API. Later URL or event changes
+neither initialize nor revoke analytics in the current document.
+
+Adobe Client Data Layer creation and event/context writes remain unconditional.
+Startup waits for the real data layer before checking consent. With acceptance
+and an `analytics` configuration, initialization retains prerender activation
+deferral and loads the Commerce events SDK before the collector. Native
+subscriptions replay retained events; no custom queue, topic framework, or
+additional initial page-view publication is used. Without analytics config,
+neither analytics library loads.
+
+Product-view and purchase history listeners are registered only when that same
+one-shot `consent.update` decision grants consent. History recording does not
+require an `analytics` configuration; accepted documents retain store-specific
+localStorage formats, native past/future hydration, SKU deduplication, and limits.
+Declined documents do not write history or delete existing records. Recommendation
+reads of previously stored history and their separate GraphQL requests remain
+unchanged; the collector gate does **not** block those requests or history reads.
+
+This URL opt-in is an integration/testing placeholder, not a stored preference,
+production CMP, revocation mechanism, or privacy-compliance solution. A merchant
+integration must establish its own consent policy, including recommendation use.
+
 ## Staying Up to Date
 
 Once you fork or clone this repo, the code is yours — you are not subscribed to updates.

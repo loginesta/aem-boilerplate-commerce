@@ -23,6 +23,18 @@ No URL parameters directly affect this block's behavior. -->
 - `{storeViewCode|catalogViewId}:productViewHistory` - Stores user's product view history for recommendation context
 - `{storeViewCode|catalogViewId}:purchaseHistory` - Stores user's purchase history for recommendation context
 
+History recording in `scripts/commerce.js` starts only after the same one-shot
+`consent.update` acceptance used to load analytics (`consent=accept`), even when
+analytics config is absent. Declined documents do not register history listeners
+or delete existing histories. Product views are deduplicated by SKU and retain
+the most recent 20 entries; purchase history retains the most recent 20 orders.
+Both use ISO dates and native data-layer past/future hydration after acceptance,
+excluding prerender-only activity. Recommendation requests and reads of existing
+stored history remain independent: the block validates histories and passes them
+to `ProductList` as `userViewHistory` and `userPurchaseHistory`, which the API
+transmits as GraphQL inputs. They are not strictly local data, and no CMP/topic/
+revocation policy is supplied by this block.
+
 ### Events
 
 #### Event Listeners
