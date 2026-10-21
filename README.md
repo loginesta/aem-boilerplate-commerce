@@ -33,40 +33,6 @@ npm run install:dropins
 
 This copies the built assets from `node_modules/@dropins` and the relevant `@adobe/*` packages into `scripts/__dropins__`, and applies the GraphQL fragment/operation overrides in `build.mjs`. Edge Delivery Services serves the copied files directly, so this step must complete before `npm start` will reflect the correct drop-in behavior.
 
-## Analytics loading
-
-`scripts/consent-check.js` is unchanged from upstream: `accept`, `true`, `1`, and
-`yes` grant consent case-insensitively; missing, empty, and unknown values decline.
-Its inline `onConsentUpdate()` broadcasts `consent.update` before conditionally
-loading `consented.js`. The existing delayed phase imports that module after ACDL
-is ready. The upstream gate does not subscribe to later events or automatically
-initialize/revoke analytics when the URL or a notification changes.
-
-Adobe Client Data Layer creation and event/context writes remain unconditional.
-Startup waits for the real data layer before checking consent. With acceptance
-and an `analytics` configuration, initialization retains prerender activation
-deferral and loads the Commerce events SDK before the collector. Native
-subscriptions replay retained events; no custom queue, topic framework, or
-additional initial page-view publication is used. Without analytics config,
-neither analytics library loads.
-
-Product-view and purchase history remain in localStorage independently of consent,
-retaining store-specific formats, native past/future hydration, SKU deduplication,
-and limits. Recommendation API requests remain available without consent, but
-omit viewing history, purchase history, cart SKUs, and shopper-derived pricing.
-The recommendation initializer retains its original shared Catalog Service
-endpoint and header configuration. Current-product SKUs and explicitly authored
-block prices remain available. Commerce captures the latest `consent.update`
-boolean in memory, defaulting to false for each document. Blocks consume that
-existing event without awaiting it: they initially omit history/cart inputs,
-update the mounted list after acceptance, and let late-added blocks read the
-captured decision. No consent preference is persisted and no new event type,
-topic framework, or separate consent module is introduced.
-
-This URL opt-in is an integration/testing placeholder, not a stored preference,
-production CMP, revocation mechanism, or privacy-compliance solution. A merchant
-integration must establish its own consent policy, including recommendation use.
-
 ## Staying Up to Date
 
 Once you fork or clone this repo, the code is yours — you are not subscribed to updates.
