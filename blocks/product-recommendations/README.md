@@ -16,16 +16,8 @@ The Product Recommendations block provides personalized product recommendations 
 
 ### Consent
 
-Recommendation requests remain available without consent. Upstream consent
-values (`accept`, `true`, `1`, `yes`;
-case-insensitive) produce a `consent.update` notification. Until an accepted
-notification, requests omit viewing history, purchase history, cart SKUs,
-and shopper-derived pricing.
-Explicitly authored `currentsku`/`currentprice` remain available without consent.
-The block updates its existing ProductList after acceptance rather than awaiting
-the event during decoration. Late-added blocks read the latest decision captured
-in Commerce memory. The upstream script remains unchanged; no preference is
-persisted and no CMP/revocation framework is supplied.
+Recommendation requests remain available without consent. Upstream consent values (`accept`, `true`, `1`, `yes`; case-insensitive) produce a `consent.update` notification. Until an accepted notification, requests omit viewing history, purchase history, cart SKUs, and shopper-derived pricing. Explicitly authored `currentsku`/`currentprice` remain available without consent.
+The block updates its existing ProductList after acceptance rather than awaiting the event during decoration. Late-added blocks read the latest decision captured in Commerce memory. The upstream script remains unchanged; no preference is persisted and no CMP/revocation framework is supplied.
 
 ### Local Storage
 

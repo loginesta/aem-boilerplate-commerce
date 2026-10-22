@@ -126,7 +126,9 @@ From `cypress/`, run the consent, positive event/navigation, and history cases:
 npm run cypress:saas:run -- --spec 'src/tests/b2c/events/*.spec.js,src/tests/b2c/verifyRecsStorageHydration.spec.js' --config retries=0
 ```
 
-The dedicated `events/consent.spec.js` checks upstream's URL consent values,
+The dedicated `events/consent.spec.js` is backend-agnostic, so it runs only in
+`run-e2e-tests.yaml` and is exempted from the SaaS and ACO shard-coverage check.
+It checks upstream's URL consent values,
 retained denied events, real SDK/collector execution and intercepted Commerce
 transport, native subscription replay during slow collector loading, ACDL-before-
 consent startup, prerender activation deferral, missing analytics config, and local
