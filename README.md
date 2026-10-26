@@ -102,10 +102,20 @@ If you want to incorporate code changes made to this upstream boilerplate after 
 Following the upstream [AEM consent gate](https://www.aem.live/developer/cmp-integration#how-consent-gating-works), the Adobe Commerce event SDK and collector (`scripts/consented.js`) load only after consent is granted. Without consent they are not loaded.
 
 - `scripts/consent-check.js` is a placeholder gate: `?consent=accept` (also `true`, `1`, `yes`) grants consent for the page load; anything else declines. It dispatches a `consent.update` event on `window`.
-- The Commerce ACDL keeps running and product view/purchase history is still recorded in `localStorage`; the history is only read and sent to the recommendation service after consent.
-- The `product-recommendations` block can still request recommendations without consent, but those requests carry no viewing history, purchase history or cart data. See the [block README](blocks/product-recommendations/README.md#consent).
+- The Adobe Client Data Layer (ACDL) keeps events and context in memory. Separately, custom code in `scripts/commerce.js` records product-view and purchase history in `localStorage`, independently of consent.
+- The `product-recommendations` block can request contextual recommendations using the current product SKU without consent. It only reads and includes local histories in recommendation requests after consent. See the [block README](blocks/product-recommendations/README.md#consent).
 
-This gate is not a consent management platform. Merchants and implementation partners are expected to replace it with their own CMP integration and dispatch `consent.update` with `{ detail: { consented: true | false } }` when the shopper decides.
+| Behaviour | Without consent | After consent |
+|-----------|-----------------|---------------|
+| ACDL events and context in memory | Active | Active |
+| Recording local view/purchase history | Active | Active |
+| Loading the analytics SDK and collector | Not loaded | Loaded if analytics is configured |
+| Contextual recommendation requests | Available | Available |
+| View/purchase history and cart SKUs in recommendation requests | Excluded | May be included |
+
+This gate is not a consent management platform (CMP). The query parameter is a testing placeholder, not a persisted preference. Merchants and implementation partners must replace it with their own CMP integration, connect the decision to consented script loading, and dispatch `consent.update` with `{ detail: { consented: true | false } }` for consumers such as the recommendations block. The placeholder does not provide a complete revocation or data-deletion workflow.
+
+Boilerplate's consent gate does not automatically integrate with Adobe Commerce Cookie Restriction Mode or manage `mg_dnt`. These are separate mechanisms and do not automatically control Boilerplate's custom local-history storage. See the [block's integration guidance](blocks/product-recommendations/README.md#cmp-and-commerce-cookie-restrictions) for the distinction and implementation responsibilities.
 
 ## Changelog
 
