@@ -1,6 +1,5 @@
 import { render as orderRenderer } from '@dropins/storefront-order/render.js';
-// The browser import map uses the local branch build, which is newer than npm's
-// installed package.
+// Requires an Order drop-in release exporting the invoice containers.
 // eslint-disable-next-line import/no-unresolved
 import { OrderInvoices } from '@dropins/storefront-order/containers/OrderInvoices.js';
 import { rootLink } from '../../scripts/commerce.js';

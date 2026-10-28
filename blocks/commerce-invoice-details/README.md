@@ -1,5 +1,33 @@
 # Invoice details: host-managed PDF branding
 
+## Package and backend prerequisites
+
+Both invoice blocks require an Order drop-in release exporting `OrderInvoices`
+and `InvoiceDetails`, including the stored-row-total changes from USF-4516.
+The currently pinned `@dropins/storefront-order` 4.1.0 package does not export
+these containers. Before deploying these blocks, update `package.json` and the
+lockfile to a published compatible release and run `npm run install:dropins`
+to regenerate browser assets. A manually copied local build is only a development
+trial and is replaced by the package installation workflow.
+
+Deploy a backend exposing `Invoice.status`, `InvoiceItemInterface.tax_amount`,
+and `InvoiceItemInterface.row_total` before the updated drop-in. Row totals
+require USF-4460; confirm its released SCP versions for each supported release
+line rather than relying on the earlier status/item-tax minimum versions.
+An older schema rejects the shared query for both invoice containers.
+
+The Order drop-in renders stored row totals, excluding tax and before discounts,
+in both the detail view and PDF. No subtotal calculation belongs in these AEM
+blocks. Zero is formatted as money; unavailable totals display an em dash.
+If the backend converts missing stored totals to zero, the frontend cannot
+distinguish them from valid zero. Confirm the backend contract before rollout.
+
+After updating the dependency and backend, verify partial and multiple invoices,
+rounding-sensitive stored totals, zero/unavailable amounts, sign-in redirects,
+back navigation, guest order-details behavior, and branded/unbranded PDFs.
+
+## Host-managed branding
+
 The block supplies optional branding through the Order drop-in's
 `getInvoicePdfBranding` callback. No branding lookup or GraphQL request is added
 to `storefront-order`.

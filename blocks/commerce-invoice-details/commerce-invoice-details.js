@@ -1,5 +1,5 @@
 import { render as orderRenderer } from '@dropins/storefront-order/render.js';
-// The browser import map uses the locally copied branch build, which exports this container.
+// Requires an Order drop-in release exporting the invoice containers.
 // eslint-disable-next-line import/no-unresolved
 import { InvoiceDetails } from '@dropins/storefront-order/containers/InvoiceDetails.js';
 import { getConfigValue } from '@dropins/tools/lib/aem/configs.js';
